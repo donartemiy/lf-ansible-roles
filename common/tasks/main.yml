@@ -3,4 +3,60 @@
 
 - name: set timezone to Asia/Yekaterinburg
   timezone:
-    name: Asia/Yekaterinburg
+    name: '{{ timezone }}'
+
+# swap. Связываем несколько тасок в один блок
+# Изменить swap_size не выйдет
+- block:
+  - name: create a swap file
+    shell: fallocate -l {{ swap_size }} {{ swapfile_path }}
+    # shell: dd if=/dev/zero of=/swapfile bs=1024 count={{ swap_size }}k ещё один способ
+    args:
+      # Проверяем, что файл отсутствует
+      creates: '{{ swapfile_path }}'
+
+  - name: set the correct permissions
+    file:
+      path: '{{ swapfile_path }}'
+      owner: root
+      group: root
+      mode: '0600'
+
+  - name: make the file a swap file
+    shell: mkswap {{ swapfile_path }}
+    # Выполнится, если файл подкачки равен 0
+    when: ansible_facts.swapfree_mb == 0
+
+  - name: enable the swap file
+    shell: swapon {{ swapfile_path }}
+    when: ansible_facts.swapfree_mb == 0
+  
+  # Чтоб всё работало после ребута
+  - name: add swap file to fstab
+    # swapfile none swap sw 0 0
+    mount:
+      # Точки монтирования нет, ведь это swap
+      name: none
+      src: '{{ swapfile_path }}'
+      fstype: swap
+      # Опции монтирования
+      opts: sw
+      # Проверка ФС при загрузке
+      passno: 0
+      dump: 0
+      # Запись в fstab должна быть добавлена, если её нет
+      state: present
+
+- block:
+  - name: Set a hostname
+    ansible.builtin.hostname:
+      # Используем системную переменную inventory_hostname - это имя хоста из inventory
+      name: "{{ inventory_hostname }}"
+
+  - name: Check name
+    ansible.builtin.shell: cat /etc/hostname
+    register: hostname_check
+
+  - name: Print hostname_check variable
+    ansible.builtin.debug:
+      var: hostname_check.stdout_lines
