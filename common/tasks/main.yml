@@ -1,5 +1,5 @@
 ---
-# tasks file for common
+# Таймзона, хостнэйм, установить swap
 
 - name: set timezone to Asia/Yekaterinburg
   timezone:
