@@ -1,0 +1,57 @@
+---
+# tasks file для создания sudoers пользователя и отключение rootlogin
+# ansible-playbook -i inventory/stage.ini stage.yml -u root
+
+- block:
+  - name: Ensure group username exists
+    ansible.builtin.group:
+      name: '{{ username }}'
+      state: present
+
+  - name: create user
+    user:
+      name: '{{ username }}'
+      groups: 
+        - '{{ username }}'
+        - sudo
+      state: present
+      shell: /bin/bash
+
+  - name: create .ssh
+    file:
+      path: /home/{{ username }}/.ssh
+      state: directory
+      owner: '{{ username }}'
+      group: '{{ username }}'
+      mode: '0700'
+
+  - name: add ssh-key
+    copy:
+      content: "{{ lookup('file', '~/.ssh/id_ed25519.pub') }}"
+      dest: /home/{{ username }}/.ssh/authorized_keys
+      owner: '{{ username }}'
+      group: '{{ username }}'
+      mode: '0600'
+
+  - name: allow commands to sudo
+    become: yes
+    copy:
+      content: '%sudo ALL=(ALL:ALL) NOPASSWD: ALL'
+      dest: /etc/sudoers.d/{{ username }}
+      owner: root
+      group: root
+      mode: '0440'
+
+- block:
+  - name: disable root login
+    become: yes
+    lineinfile:
+      path: /etc/ssh/sshd_config
+      regexp: 'PermitRootLogin.*'
+      line: 'PermitRootLogin No'
+
+  - name: restart ssh
+    become: yes
+    service:
+      name: sshd
+      state: reloaded

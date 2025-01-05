@@ -60,3 +60,9 @@
   - name: Print hostname_check variable
     ansible.builtin.debug:
       var: hostname_check.stdout_lines
+
+
+- name: update apt cache
+  apt:
+    update_cache: yes
+  become: yes
