@@ -9,6 +9,7 @@
 # Изменить swap_size не выйдет
 - block:
   - name: create a swap file
+    become: yes
     shell: fallocate -l {{ swap_size }} {{ swapfile_path }}
     # shell: dd if=/dev/zero of=/swapfile bs=1024 count={{ swap_size }}k ещё один способ
     args:
@@ -16,6 +17,7 @@
       creates: '{{ swapfile_path }}'
 
   - name: set the correct permissions
+    become: yes
     file:
       path: '{{ swapfile_path }}'
       owner: root
@@ -23,16 +25,19 @@
       mode: '0600'
 
   - name: make the file a swap file
+    become: yes
     shell: mkswap {{ swapfile_path }}
     # Выполнится, если файл подкачки равен 0
     when: ansible_facts.swapfree_mb == 0
 
   - name: enable the swap file
+    become: yes
     shell: swapon {{ swapfile_path }}
     when: ansible_facts.swapfree_mb == 0
   
   # Чтоб всё работало после ребута
   - name: add swap file to fstab
+    become: yes
     # swapfile none swap sw 0 0
     mount:
       # Точки монтирования нет, ведь это swap
@@ -49,20 +54,38 @@
 
 - block:
   - name: Set a hostname
-    ansible.builtin.hostname:
+    hostname:
       # Используем системную переменную inventory_hostname - это имя хоста из inventory
       name: "{{ inventory_hostname }}"
 
   - name: Check name
-    ansible.builtin.shell: cat /etc/hostname
+    shell: cat /etc/hostname
     register: hostname_check
 
   - name: Print hostname_check variable
-    ansible.builtin.debug:
+    debug:
       var: hostname_check.stdout_lines
 
 
 - name: update apt cache
+  become: yes
   apt:
     update_cache: yes
+
+# - name: installation packages
+#   become: yes
+#   apt:
+#     name: git, htop, net-tools, wget, zip, unzip, telnet, mc, screen, rsync, psmisc, strace, atop, sysstat, iotop, dstat, lsof, curl, jq, pv, ncdu, nethogs
+#     # state: present
+#     state: absent
+#     update_cache: yes
+
+
+- name: installation packages
   become: yes
+  apt:
+    name: "{{ item }}"
+    state: present
+    update_cache: yes
+  loop:
+    - "{{ packages }}"

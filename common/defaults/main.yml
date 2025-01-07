@@ -3,3 +3,8 @@
 swap_size: 500MB
 timezone: Asia/Yekaterinburg
 swapfile_path: /swapfile
+packages: 
+   - git
+   - htop
+   - net-tools
+   - wget

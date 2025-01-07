@@ -4,11 +4,12 @@
 
 - block:
   - name: Ensure group username exists
-    ansible.builtin.group:
+    group:
       name: '{{ username }}'
       state: present
 
   - name: create user
+    become: yes
     user:
       name: '{{ username }}'
       groups: 

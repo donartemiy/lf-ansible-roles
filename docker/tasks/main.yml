@@ -1,0 +1,78 @@
+---
+# tasks file for docker
+
+- block:
+  - name: add GPG key for docker
+    become: yes
+    # curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+    apt_key:
+      url: https://download.docker.com/linux/ubuntu/gpg
+      state: present
+
+  - name: add repository for docker
+    become: yes
+    # add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+    apt_repository:
+      repo: 'deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable'
+      state: present
+
+  - name: update cache
+    become: yes
+    apt:
+      update_cache: yes
+
+  - name: install docker
+    become: yes
+    apt:
+      name: "{{ item }}"
+      state: present
+    loop: 
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+      - docker-ce-rootless-extras
+
+  - name: check docker service
+    become: yes
+    service:
+      name: docker
+      state: started
+      enabled: yes
+
+# - name: add PPA repository
+#   apt_repository:
+#    repo: 'ppa:example/ppa'
+#    state: present
+
+  - name: add group docker to current user
+    become: yes
+    user:
+      # name: "{{ ansible_facts['USER'] }}"
+      name: "{{ ansible_user_id }}"
+      groups: docker
+      append: yes
+      state: present
+
+- block:
+  - name: Create a directory if it does not exist
+    become: yes
+    file:
+      path: /usr/lib/docker/cli-plugins
+      state: directory
+      mode: '0755'
+
+  - name: download docker-compose
+    become: yes
+    get_url: 
+      url: "https://github.com/docker/compose/releases/download/{{ docker_compose_version }}/docker-compose-linux-x86_64"
+      dest: /usr/lib/docker/cli-plugins/docker-compose-linux-x86_64_{{ docker_compose_version }}
+      mode: 0755
+  
+  - name: Create a symbolic link
+    become: yes
+    file:
+      src: /usr/lib/docker/cli-plugins/docker-compose-linux-x86_64_{{ docker_compose_version }}
+      dest: /usr/local/bin/docker-compose
+      state: link

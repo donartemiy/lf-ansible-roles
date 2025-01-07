@@ -15,6 +15,7 @@
   when: ansible_facts.swapfree_mb > 0
 
 - name: delete the swap file
+  # Возможно тут стот сделать задержку перед удалением файла
   become: yes
   file:
     path: '{{ swapfile_path }}'
