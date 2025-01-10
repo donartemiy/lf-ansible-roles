@@ -9,7 +9,6 @@
       state: present
 
   - name: create user
-    become: yes
     user:
       name: '{{ username }}'
       groups: 
@@ -35,24 +34,23 @@
       mode: '0600'
 
   - name: allow commands to sudo
-    become: yes
     copy:
       content: '%sudo ALL=(ALL:ALL) NOPASSWD: ALL'
       dest: /etc/sudoers.d/{{ username }}
       owner: root
       group: root
       mode: '0440'
+  become: yes
 
 - block:
   - name: disable root login
-    become: yes
     lineinfile:
       path: /etc/ssh/sshd_config
       regexp: 'PermitRootLogin.*'
       line: 'PermitRootLogin No'
 
   - name: restart ssh
-    become: yes
     service:
       name: sshd
       state: reloaded
+  become: yes

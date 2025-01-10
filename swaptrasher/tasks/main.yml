@@ -1,23 +1,21 @@
 ---
 # Удаление swap
 
-- name: delete string in fstab
-  become: yes
-  mount:
-    name: none
-    src: '{{ swapfile_path }}'
-    fstype: swap
-    state: absent_from_fstab
+- block:
+  - name: delete string in fstab
+    mount:
+      name: none
+      src: '{{ swapfile_path }}'
+      fstype: swap
+      state: absent_from_fstab
 
-- name: disable the swap file
-  become: yes
-  shell: swapoff {{ swapfile_path }}
-  when: ansible_facts.swapfree_mb > 0
+  - name: disable the swap file
+    shell: swapoff {{ swapfile_path }}
+    when: ansible_facts.swapfree_mb > 0
 
-- name: delete the swap file
-  # Возможно тут стот сделать задержку перед удалением файла
+  - name: delete the swap file
+    # Возможно тут стоит сделать задержку перед удалением файла
+    file:
+      path: '{{ swapfile_path }}'
+      state: absent
   become: yes
-  file:
-    path: '{{ swapfile_path }}'
-    state: absent
-
