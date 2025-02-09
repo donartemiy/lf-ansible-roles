@@ -82,3 +82,18 @@
   #     # state: present
   #     state: absent
   #     update_cache: yes
+
+
+#ClientAliveInterval
+- block:
+  - name: SSH server idle timeout
+    lineinfile:
+      path: /etc/ssh/sshd_config
+      regexp: 'ClientAliveInterval.*'
+      line: 'ClientAliveInterval 30m'
+
+  - name: restart ssh
+    service:
+      name: sshd
+      state: reloaded
+  become: yes
