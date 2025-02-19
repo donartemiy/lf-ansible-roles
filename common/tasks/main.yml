@@ -53,6 +53,7 @@
     hostname:
       # Используем системную переменную inventory_hostname - это имя хоста из inventory
       name: "{{ inventory_hostname }}"
+    become: yes
 
   - name: Check name
     shell: cat /etc/hostname
@@ -69,6 +70,7 @@
 
   - name: installation packages
     apt:
+      # name: mc, htop, rsync
       name: "{{ item }}"
       state: present
       update_cache: yes
