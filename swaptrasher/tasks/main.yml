@@ -1,21 +1,26 @@
+# roles/swaptrasher/tasks/main.yml
 ---
 # Удаление swap
 
 - block:
-  - name: delete string in fstab
+  - name: Delete string in fstab by fstype
     mount:
-      name: none
-      src: '{{ swapfile_path }}'
+      path: none
       fstype: swap
-      state: absent_from_fstab
+      state: absent
 
-  - name: disable the swap file
-    shell: swapoff {{ swapfile_path }}
+  - name: Get path to swap
+    shell: swapon --show | awk '/swap/ {print $1}'
+    register: swap_path
+  - debug:
+      var: swap_path.stdout
+
+  - name: Disable the swap file
+    shell: swapoff {{ swap_path.stdout }}
     when: ansible_facts.swapfree_mb > 0
 
-  - name: delete the swap file
-    # Возможно тут стоит сделать задержку перед удалением файла
+  - name: Delete the swap file
     file:
-      path: '{{ swapfile_path }}'
+      path: swap_path.stdout
       state: absent
   become: yes
