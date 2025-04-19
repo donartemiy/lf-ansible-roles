@@ -1,0 +1,80 @@
+---
+# tasks file for docker-compose-from-source
+
+# Установка Golang
+- block:
+  - name: Recursively remove /usr/local/go
+    file:
+      path: /usr/local/go
+      state: absent
+
+  - name: Download and Unarchive go1.23.8.linux-amd64.tar.gz
+    unarchive:
+      src: https://go.dev/dl/go1.23.8.linux-amd64.tar.gz
+      dest: /usr/local
+      remote_src: yes
+
+  - debug:
+      var: '{{ ansible_env.PATH}}'
+
+  - name: Update /etc/environment
+    lineinfile:
+      dest: /etc/environment
+      regexp: '^PATH'
+      insertbefore: BOF
+      line: 'PATH="{{ ansible_env.PATH }}:/usr/local/go/bin"'
+
+  - name:
+    shell: go version
+    register: go_version
+    environment:
+      PATH: '{{ ansible_env.PATH }}:/usr/local/go/bin'
+  - debug:
+      var: go_version.stdout
+  become: yes
+
+
+# Установка make
+- name: Install 'make'
+  apt:
+    name: make
+    update_cache: yes
+  become: yes
+
+
+# Install docker-compose
+- block:
+  - name: Clone a repo https://github.com/docker/compose.git
+    git:
+      repo: 'https://github.com/docker/compose.git'
+      dest: /opt/compose
+
+  - name: Get number of cores
+    shell: nproc
+    register: numb_cores_cpu
+
+  - name: Build the default target
+    make:
+      chdir: /opt/compose
+      jobs: '{{ numb_cores_cpu.stdout }}'
+    environment:
+      PATH: '{{ ansible_env.PATH }}:/usr/local/go/bin'
+
+  - name: Copy 'docker-compose' to /usr/local/bin
+    copy:
+      src: /opt/compose/bin/build/docker-compose
+      dest: /usr/local/bin
+      remote_src: yes
+      mode: preserve
+
+  - name: Delete dir /opt/compose
+    file:
+      path: /opt/compose
+      state: absent
+
+  - name:
+    shell: docker-compose version
+    register: docker_composeo_version
+  - debug:
+      var: docker_composeo_version.stdout
+  become: yes
