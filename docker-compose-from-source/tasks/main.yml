@@ -1,21 +1,36 @@
 ---
 # tasks file for docker-compose-from-source
 
-# Установка Golang
+
+# Скачиваем конретную версию compose
+- name: Clone a repo -b {{ docker_compose_version }} https://github.com/docker/compose.git
+  git:
+    repo: 'https://github.com/docker/compose.git'
+    dest: /opt/compose
+    depth: 1
+    single_branch: yes
+    version: '{{ docker_compose_version }}'
+  become: yes
+
+# Golang
 - block:
+  # Определяем версию Golang
+  - shell: awk -F '=' '/ARG GO_VERSION/ {print $2}' /opt/compose/Dockerfile
+    register: go_version
+  - debug:
+      msg: go_version.stdout
+
+  # Удаляем старый Golan если есть
   - name: Recursively remove /usr/local/go
     file:
       path: /usr/local/go
       state: absent
 
-  - name: Download and Unarchive go1.23.8.linux-amd64.tar.gz
+  - name: Download and Unarchive go{{go_version.stdout}}linux-amd64.tar.gz
     unarchive:
-      src: https://go.dev/dl/go1.23.8.linux-amd64.tar.gz
+      src: https://go.dev/dl/go{{go_version.stdout}}.linux-amd64.tar.gz
       dest: /usr/local
       remote_src: yes
-
-  - debug:
-      var: '{{ ansible_env.PATH}}'
 
   - name: Update /etc/environment
     lineinfile:
@@ -24,8 +39,7 @@
       insertbefore: BOF
       line: 'PATH="{{ ansible_env.PATH }}:/usr/local/go/bin"'
 
-  - name:
-    shell: go version
+  - shell: go version
     register: go_version
     environment:
       PATH: '{{ ansible_env.PATH }}:/usr/local/go/bin'
@@ -33,27 +47,18 @@
       var: go_version.stdout
   become: yes
 
-
-# Установка make
-- name: Install 'make'
-  apt:
-    name: make
-    update_cache: yes
-  become: yes
-
-
-# Install docker-compose
+# Сборка docker-compose
 - block:
-  - name: Clone a repo https://github.com/docker/compose.git
-    git:
-      repo: 'https://github.com/docker/compose.git'
-      dest: /opt/compose
+  - name: Install 'make'
+    apt:
+      name: make
+      update_cache: yes
 
   - name: Get number of cores
     shell: nproc
     register: numb_cores_cpu
 
-  - name: Build the default target
+  - name: Compile docker-compose
     make:
       chdir: /opt/compose
       jobs: '{{ numb_cores_cpu.stdout }}'
@@ -67,14 +72,29 @@
       remote_src: yes
       mode: preserve
 
+  - shell: docker-compose version
+    register: docker_composeo_version
+  - debug:
+      var: docker_composeo_version.stdout
+  
+  # Удаляем исходники compose
   - name: Delete dir /opt/compose
     file:
       path: /opt/compose
       state: absent
-
-  - name:
-    shell: docker-compose version
-    register: docker_composeo_version
-  - debug:
-      var: docker_composeo_version.stdout
   become: yes
+
+# LA. Разные вариации отображения LA
+- block:
+  - debug:
+      msg: "{{ ansible_loadavg }}"
+  - debug:
+      msg: "load avegere: {{ ansible_loadavg['15m'] }}, {{ ansible_loadavg['1m'] }}, {{ ansible_loadavg['5m'] }}"
+  - debug:
+      # '%.2f' это из printf, format из jinja
+      msg: "load avegere: {{ '%.2f' | format(ansible_loadavg['15m']) }}, {{ '%.2f' | format(ansible_loadavg['1m']) }}, {{ '%.2f' | format(ansible_loadavg['5m']) }}"
+
+  - shell: uptime | awk -F ',' '{print $3, $4, $5}'
+    register: uptime_loadavg
+  - debug:
+      var: uptime_loadavg.stdout
