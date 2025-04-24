@@ -50,17 +50,17 @@
   become: yes
 
 - block:
-  - name: Set a hostname
+  - name: set a hostname
     hostname:
       # Используем системную переменную inventory_hostname - это имя хоста из inventory
       name: "{{ inventory_hostname }}"
     become: yes
 
-  - name: Check name
+  - name: check name
     shell: cat /etc/hostname
     register: hostname_check
 
-  - name: Print hostname_check variable
+  - name: print hostname_check variable
     debug:
       var: hostname_check.stdout_lines
 
@@ -77,6 +77,7 @@
       update_cache: yes
     loop:
       - "{{ packages }}"
+    delay: 5
   become: yes
 
   # - name: installation packages
@@ -87,9 +88,9 @@
   #     update_cache: yes
 
 
-#ClientAliveInterval
+# ClientAliveInterval
 - block:
-  - name: SSH server idle timeout
+  - name: sshs server idle timeout
     lineinfile:
       path: /etc/ssh/sshd_config
       regexp: 'ClientAliveInterval.*'
@@ -100,3 +101,18 @@
       name: sshd
       state: reloaded
   become: yes
+
+# LA. Разные вариации отображения LA
+- block:
+  - debug:
+      msg: "{{ ansible_loadavg }}"
+  - debug:
+      msg: "load avegere: {{ ansible_loadavg['15m'] }}, {{ ansible_loadavg['1m'] }}, {{ ansible_loadavg['5m'] }}"
+  - debug:
+      # '%.2f' это из printf, format из jinja
+      msg: "load avegere: {{ '%.2f' | format(ansible_loadavg['15m']) }}, {{ '%.2f' | format(ansible_loadavg['1m']) }}, {{ '%.2f' | format(ansible_loadavg['5m']) }}"
+
+  - shell: uptime | awk -F ',' '{print $3, $4, $5}'
+    register: uptime_loadavg
+  - debug:
+      var: uptime_loadavg.stdout
