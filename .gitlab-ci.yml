@@ -12,7 +12,6 @@ include:
 # Переопределяем стандартный шаблон: 
 # https://gitlab.com/gitlab-org/security-products/analyzers/secrets/-/tree/master#L559
 secret_detection:
-  stage: pre-build
   variables:
     SECRET_DETECTION_HISTORIC_SCAN: "true"  # Для проверки более ранних коммитов
     GIT_STRATEGY: "clone"
