@@ -1,0 +1,7 @@
+---
+# defaults file for shell-runner
+
+gitlab_runner_access_token: glpat-qT7B...eLZ
+gitlab_runner_group: 97...32
+gitlab_runner_tags: 
+  - XXXXX8

@@ -1,0 +1,84 @@
+---
+# tasks file for shell-runner
+# s1e17
+# Download, create user, run runner, register runner in gotlab
+
+- name: download the executive file - gitlab-runner
+  get_url:
+    url: https://gitlab-runner-downloads.s3.amazonaws.com/latest/binaries/gitlab-runner-linux-amd64
+    dest: /usr/local/bin/gitlab-runner
+    mode: '0755'
+  become: true
+
+# Create user 
+- block:
+  - name: ensure group username exists
+    group:
+      name: gitlab-runner
+      state: present
+
+  - name: create user
+    user:
+      name: gitlab-runner
+      comment: 'Gitlab Runner'
+      create_home: true
+      groups: 
+        - gitlab-runner
+        - sudo
+      state: present
+      shell: /bin/bash
+
+# Is there any runenr?
+- block:
+  - name: check if file exists
+    stat:
+      path: /etc/systemd/system/gitlab-runner.service
+    register: gitlab_runner_unit
+
+  - name: does this file exist
+    debug:
+      msg: "the file does not exist"
+    when: not gitlab_runner_unit.stat.exists
+
+# Install runner
+- block:
+  - shell: gitlab-runner install --user=gitlab-runner --working-directory=/home/gitlab-runner
+    when: not gitlab_runner_unit.stat.exists
+  
+  - shell: gitlab-runner start
+
+# Register runner in Gitlab
+- block:
+  - name: installation python-gitlab
+    apt:
+      name: pip
+      state: present
+      update_cache: yes
+
+  - name: install python package
+    pip:
+      name: python-gitlab
+
+  - name: create a group-level runner
+    community.general.gitlab_runner:
+      api_url: https://gitlab.com/
+      api_token: '{{ access_token }}'
+      description: 'Docker Machine t8'
+      state: present
+      active: true
+      tag_list: '{{ gitlab_runner_tags }}'
+      run_untagged: true
+      locked: false
+      group: '{{ gitlab_runner_group }}'
+    register: runner # Register module output to run C(gitlab-runner register) command in another task
+
+  - debug:
+      msg: '{{ runner.runner.token }}'
+
+  - name: gitlab-runner register
+    shell: |
+      gitlab-runner register --non-interactive \
+        --url https://gitlab.com/ \
+        --token "{{ runner.runner.token }}" \
+        --description "Docker Machine t1" \
+        --executor "shell"
